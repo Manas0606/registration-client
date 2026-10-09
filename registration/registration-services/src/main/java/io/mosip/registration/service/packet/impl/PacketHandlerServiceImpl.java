@@ -45,7 +45,7 @@ import io.mosip.commons.packet.facade.PacketWriter;
 import io.mosip.kernel.auditmanager.entity.Audit;
 import io.mosip.kernel.biometrics.entities.BIR;
 import io.mosip.kernel.biometrics.entities.BiometricRecord;
-import io.mosip.kernel.core.idgenerator.spi.RidGenerator;
+import io.mosip.registration.service.rid.TimestampRidGenerator;
 import io.mosip.kernel.core.logger.spi.Logger;
 import io.mosip.kernel.idgenerator.rid.constant.RidGeneratorPropertyConstant;
 import io.mosip.registration.audit.AuditManagerService;
@@ -137,7 +137,7 @@ public class PacketHandlerServiceImpl extends BaseService implements PacketHandl
 	private BioService bioService;
 
 	@Autowired
-	private RidGenerator<String> ridGenerator;
+	private TimestampRidGenerator timestampRidGenerator;
 
 	@Autowired
 	private ClientCryptoFacade clientCryptoFacade;
@@ -615,10 +615,9 @@ public class PacketHandlerServiceImpl extends BaseService implements PacketHandl
 		registrationDTO.setRegistrationMetaDataDTO(registrationMetaDataDTO);
 
 		//set application id
-		registrationDTO.setAppId(ridGenerator.generateId(
-				(String) ApplicationContext.map().get(RegistrationConstants.USER_CENTER_ID),
-				(String) ApplicationContext.map().get(RegistrationConstants.USER_STATION_ID)));
-		registrationDTO.setRegistrationId(registrationDTO.getAppId());
+		registrationDTO.setAppId(timestampRidGenerator.generateId(
+                (String) ApplicationContext.map().get(RegistrationConstants.USER_STATION_ID)));
+        registrationDTO.setRegistrationId(registrationDTO.getAppId());
 
 		LOGGER.info("Registration Started for ApplicationId  : {}", registrationDTO.getAppId());
 
