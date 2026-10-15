@@ -117,7 +117,8 @@ public class PreRegZipHandlingServiceImpl extends BaseService implements PreRegZ
 									PRE_REG_PACKET_ZIP_COMPRESSED_RATIO_EXCEEDED.getErrorMessage());
 						}
 						totalReadArchiveSize = totalReadArchiveSize + idjson.length;
-						parseDemographicJson(new String(idjson));
+						System.out.println("[PREREG-TRACE] ZIP ID.json found; bytes=" + idjson.length + " (resident values hidden)");
+                        parseDemographicJson(new String(idjson));
 						break;
 					}
 
@@ -316,16 +317,21 @@ public class PreRegZipHandlingServiceImpl extends BaseService implements PreRegZ
 			throws RegBaseCheckedException {
 		
 		// Decrypt the preRegPacket data
-		byte[] decryptedPacketData = clientCryptoFacade.decrypt(preRegPacket);
+		System.out.println("[PREREG-TRACE] API packet decryption with ClientCryptoFacade; encryptedBytes=" + preRegPacket.length);
+        byte[] decryptedPacketData = clientCryptoFacade.decrypt(preRegPacket);
+        System.out.println("[PREREG-TRACE] API packet decrypted; plainZipBytes=" + decryptedPacketData.length);
 
 		// Generate AES Session Key
 		final SecretKey symmetricKey = keyGenerator.getSymmetricKey();
+        System.out.println("[PREREG-TRACE] New local AES symmetric key generated (contents hidden)");
 
 		final byte[] encryptedData = cryptoCore.symmetricEncrypt(symmetricKey, decryptedPacketData, null);
+        System.out.println("[PREREG-TRACE] ZIP re-encrypted for local storage; bytes=" + encryptedData.length);
 
 		LOGGER.info("Pre Registration packet Encrypted");
 
 		String filePath = storePreRegPacketToDisk(preRegistrationId, encryptedData);
+        System.out.println("[PREREG-TRACE] Encrypted ZIP saved locally; pathPresent=" + (filePath != null));
 
 		PreRegistrationDTO preRegistrationDTO = new PreRegistrationDTO();
 		preRegistrationDTO.setPacketPath(filePath);
@@ -378,7 +384,8 @@ public class PreRegZipHandlingServiceImpl extends BaseService implements PreRegZ
 	public byte[] decryptPreRegPacket(String symmetricKey, byte[] encryptedPacket) {
 		byte[] secret = ClientCryptoUtils.decodeBase64Data(symmetricKey);
 		SecretKey secretKey = new SecretKeySpec(secret, 0 , secret.length, "AES");
-		return cryptoCore.symmetricDecrypt(secretKey, encryptedPacket, null);
+		System.out.println("[PREREG-TRACE] AES decrypt local ZIP; bytes=" + encryptedPacket.length + " (key hidden)");
+        return cryptoCore.symmetricDecrypt(secretKey, encryptedPacket, null);
 	}
 
 	private String validateFilename(String filename, String intendedDir) throws IOException {

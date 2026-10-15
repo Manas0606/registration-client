@@ -319,6 +319,7 @@ public class GenericController<uiFieldDTO> extends BaseController {
 	}
 
 	protected void executePreRegFetchTask(TextField textField) {
+        System.out.println("[PREREG-TRACE] Fetch clicked");
 		genericScreen.setDisable(true);
 		progressIndicator.setVisible(true);
 
@@ -343,7 +344,9 @@ public class GenericController<uiFieldDTO> extends BaseController {
 								generateAlertLanguageSpecific(RegistrationConstants.ERROR, RegistrationUIConstants.PRE_REG_ID_NOT_VALID);
 								return;
 							}
-							ResponseDTO responseDTO = preRegistrationDataSyncService.getPreRegistration(textField.getText(), false);
+							System.out.println("[PREREG-TRACE] Validation passed; fetching pre-reg with forceDownload=false");
+                            ResponseDTO responseDTO = preRegistrationDataSyncService.getPreRegistration(textField.getText(), false);
+                            System.out.println("[PREREG-TRACE] Fetch result success=" + (responseDTO.getSuccessResponseDTO() != null));
 							
 							if (responseDTO.getErrorResponseDTOs() != null
 									&& !responseDTO.getErrorResponseDTOs().isEmpty()
@@ -442,6 +445,7 @@ public class GenericController<uiFieldDTO> extends BaseController {
 	}
 
 	private void loadPreRegSync(ResponseDTO responseDTO) throws RegBaseCheckedException{
+        System.out.println("[PREREG-TRACE] Populating registration controls from packet");
 		auditFactory.audit(AuditEvent.REG_DEMO_PRE_REG_DATA_FETCH, Components.REG_DEMO_DETAILS, SessionContext.userId(),
 				AuditReferenceIdTypes.USER_ID.getReferenceTypeId());
 		
@@ -480,7 +484,8 @@ public class GenericController<uiFieldDTO> extends BaseController {
 							break;
 						default:
 							var demographicsCopy = (Map<String, Object>)SessionContext.map().get(RegistrationConstants.REGISTRATION_DATA_DEMO);
-							fxControl.selectAndSet(getRegistrationDTOFromSession().getDemographics().get(field.getId()) != null ? getRegistrationDTOFromSession().getDemographics().get(field.getId()) : demographicsCopy.get(field.getId()));
+							System.out.println("[PREREG-TRACE] UI field populated: " + field.getId() + " (value omitted)");
+                            fxControl.selectAndSet(getRegistrationDTOFromSession().getDemographics().get(field.getId()) != null ? getRegistrationDTOFromSession().getDemographics().get(field.getId()) : demographicsCopy.get(field.getId()));
 							//it will read data from field components and set it in registrationDTO along with selectedCodes and ageGroups
                             //kind of supporting data
                             fxControl.setData(getRegistrationDTOFromSession().getDemographics().get(field.getId()) != null ? getRegistrationDTOFromSession().getDemographics().get(field.getId()) : demographicsCopy.get(field.getId()));

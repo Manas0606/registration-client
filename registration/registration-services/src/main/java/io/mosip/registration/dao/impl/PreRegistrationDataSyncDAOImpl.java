@@ -49,7 +49,9 @@ public class PreRegistrationDataSyncDAOImpl implements PreRegistrationDataSyncDA
 				RegistrationConstants.APPLICATION_NAME, RegistrationConstants.APPLICATION_ID,
 				"Fetching Pre-Registration");
 
-		return preRegistrationRepository.findByPreRegId(preRegId);
+		PreRegistrationList result = preRegistrationRepository.findByPreRegId(preRegId);
+        System.out.println("[PREREG-TRACE] Derby SELECT reg.pre_registration_list; found=" + (result != null));
+        return result;
 
 	}
 
@@ -67,7 +69,8 @@ public class PreRegistrationDataSyncDAOImpl implements PreRegistrationDataSyncDA
 				RegistrationConstants.APPLICATION_NAME, RegistrationConstants.APPLICATION_ID,
 				"Saving Pre-Registration");
 
-		return preRegistrationRepository.save(preRegistration);
+		System.out.println("[PREREG-TRACE] Derby repository SAVE");
+        return preRegistrationRepository.save(preRegistration);
 
 	}
 
@@ -86,7 +89,8 @@ public class PreRegistrationDataSyncDAOImpl implements PreRegistrationDataSyncDA
 				RegistrationConstants.APPLICATION_NAME, RegistrationConstants.APPLICATION_ID,
 				"Update the deleted records");
 
-		return preRegistrationRepository.update(preReg);
+		System.out.println("[PREREG-TRACE] Derby repository UPDATE");
+        return preRegistrationRepository.update(preReg);
 
 	}
 
@@ -97,7 +101,8 @@ public class PreRegistrationDataSyncDAOImpl implements PreRegistrationDataSyncDA
 		/** Parase List to Iterable */
 		Iterable<PreRegistrationList> iterablePreRegistrationList = preRegistrationLists;
 
-		preRegistrationRepository.deleteInBatch(iterablePreRegistrationList);
+		System.out.println("[PREREG-TRACE] Derby repository DELETE IN BATCH");
+        preRegistrationRepository.deleteInBatch(iterablePreRegistrationList);
 		LOGGER.info("REGISTRATION - PRE_REGISTRATION_DATA_SYNC_RECORD_UPDATE - PRE_REGISTRATION_DATA_SYNC_DAO_IMPL",
 				RegistrationConstants.APPLICATION_NAME, RegistrationConstants.APPLICATION_ID, "delete records ended");
 

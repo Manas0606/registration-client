@@ -605,7 +605,9 @@ public class PacketHandlerController extends BaseController implements Initializ
 		}
 
 		// packet creation
-		ResponseDTO response = packetHandlerService.handle(registrationDTO);
+		System.out.println("[PREREG-TRACE] Registration packet creation started; hasPreRegId=" + (registrationDTO.getPreRegistrationId() != null));
+        ResponseDTO response = packetHandlerService.handle(registrationDTO);
+        System.out.println("[PREREG-TRACE] Packet creation returned success=" + (response.getSuccessResponseDTO() != null));
 
 		if (response.getSuccessResponseDTO() != null
 				&& response.getSuccessResponseDTO().getMessage().equals(RegistrationConstants.SUCCESS)) {
@@ -620,7 +622,9 @@ public class PacketHandlerController extends BaseController implements Initializ
 							.getPreRegistrationRecordForDeletion(
 									getRegistrationDTOFromSession().getPreRegistrationId());
 					preRegistrationLists.add(preRegistrationList);
-					preRegistrationDataSyncService.deletePreRegRecords(responseDTO, preRegistrationLists);
+					System.out.println("[PREREG-TRACE] After successful packet creation: deleting local pre-reg ZIP and Derby metadata; recordFound=" + (preRegistrationList != null));
+                    preRegistrationDataSyncService.deletePreRegRecords(responseDTO, preRegistrationLists);
+                    System.out.println("[PREREG-TRACE] Deletion returned success=" + (responseDTO.getSuccessResponseDTO() != null));
 
 				}
 

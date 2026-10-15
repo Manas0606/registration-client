@@ -189,15 +189,19 @@ public class PreRegistrationDataSyncServiceImpl extends BaseService implements P
 	public ResponseDTO getPreRegistration(@NonNull String preRegistrationId, boolean forceDownload) {
 		ResponseDTO responseDTO = new ResponseDTO();
 		try {
-			PreRegistrationList preRegistration = preRegistrationDAO.get(preRegistrationId);
+			System.out.println("[PREREG-TRACE] Fetch service started; forceDownload=" + forceDownload);
+            PreRegistrationList preRegistration = preRegistrationDAO.get(preRegistrationId);
+            System.out.println("[PREREG-TRACE] Derby lookup returned record=" + (preRegistration != null));
 			preRegistration = getPreRegistration(preRegistrationId, preRegistration == null ? null :
 					forceDownload ? null : preRegistration.getLastUpdatedPreRegTimeStamp());
 
 			if (preRegistration != null) {
-				byte[] decryptedPacket = preRegZipHandlingService.decryptPreRegPacket(
+				System.out.println("[PREREG-TRACE] Reading encrypted ZIP from disk and decrypting with Derby-stored AES key");
+                byte[] decryptedPacket = preRegZipHandlingService.decryptPreRegPacket(
 						preRegistration.getPacketSymmetricKey(),
 						FileUtils.readFileToByteArray(FileUtils.getFile(preRegistration.getPacketPath())));
-				setPacketToResponse(responseDTO, decryptedPacket, preRegistrationId);
+				System.out.println("[PREREG-TRACE] Decrypted ZIP bytes=" + decryptedPacket.length + "; extracting ID.json/documents");
+                setPacketToResponse(responseDTO, decryptedPacket, preRegistrationId);
 				return responseDTO;
 			}
 		} catch (RegBaseCheckedException regBaseCheckedException) {
@@ -216,9 +220,11 @@ public class PreRegistrationDataSyncServiceImpl extends BaseService implements P
 		PreRegistrationList preRegistration = null;
 		/* Check in Database whether required record already exists or not */
 		preRegistration = preRegistrationDAO.get(preRegistrationId);
+        System.out.println("[PREREG-TRACE] Cache status: metadata=" + (preRegistration != null) + ", zipFile=" + (preRegistration != null && FileUtils.getFile(preRegistration.getPacketPath()).exists()));
 		if(preRegistration == null || !FileUtils.getFile(preRegistration.getPacketPath()).exists()) {
 			LOGGER.info("Pre-Registration ID is not present downloading {}", preRegistrationId);
-			return downloadAndSavePacket(preRegistration, preRegistrationId, lastUpdatedTimeStamp);
+			System.out.println("[PREREG-TRACE] Cache missing or stale: requesting pre-reg ZIP from API");
+            return downloadAndSavePacket(preRegistration, preRegistrationId, lastUpdatedTimeStamp);
 		}
 
 		if(lastUpdatedTimeStamp == null ||
@@ -226,7 +232,8 @@ public class PreRegistrationDataSyncServiceImpl extends BaseService implements P
 			LOGGER.info("Pre-Registration ID is not up-to-date downloading {}", preRegistrationId);
 			return downloadAndSavePacket(preRegistration, preRegistrationId, lastUpdatedTimeStamp);
 		}
-		return preRegistration;
+		System.out.println("[PREREG-TRACE] Local cache hit: no API request required");
+        return preRegistration;
 	}
 
 	@Counted
@@ -238,12 +245,14 @@ public class PreRegistrationDataSyncServiceImpl extends BaseService implements P
 		requestParamMap.put(RegistrationConstants.USER_STATION_ID, getStationId());
 		LOGGER.debug("Downloading pre-reg packet {}", requestParamMap);
 
-		LinkedHashMap<String, Object> response = (LinkedHashMap<String, Object>) serviceDelegateUtil.get(RegistrationConstants.GET_PRE_REGISTRATION,
+		System.out.println("[PREREG-TRACE] GET /preregistration/v1/sync/{pre_registration_id}/{stationId}; API key=" + RegistrationConstants.GET_PRE_REGISTRATION);
+        LinkedHashMap<String, Object> response = (LinkedHashMap<String, Object>) serviceDelegateUtil.get(RegistrationConstants.GET_PRE_REGISTRATION,
 				requestParamMap, true,	RegistrationConstants.JOB_TRIGGER_POINT_SYSTEM);
 		MainResponseDTO<PreRegArchiveDTO> mainResponseDTO = new ObjectMapper()
 				.convertValue(response, new TypeReference<MainResponseDTO<PreRegArchiveDTO>>() {});
 
-		//successfully downloaded pre-reg packet
+		System.out.println("[PREREG-TRACE] API returned response=" + (mainResponseDTO.getResponse() != null) + ", zipBytesPresent=" + (mainResponseDTO.getResponse() != null && mainResponseDTO.getResponse().getZipBytes() != null));
+        //successfully downloaded pre-reg packet
 		if(mainResponseDTO.getResponse() != null && mainResponseDTO.getResponse().getZipBytes() != null) {
 			PreRegistrationDTO preRegistrationDTO = preRegZipHandlingService
 					.encryptAndSavePreRegPacket(preRegistrationId, mainResponseDTO.getResponse().getZipBytes());
@@ -255,6 +264,7 @@ public class PreRegistrationDataSyncServiceImpl extends BaseService implements P
 
 			// save in Pre-Reg List
 			PreRegistrationList preRegistrationList = preparePreRegistration(syncTransaction, preRegistrationDTO);
+            System.out.println("[PREREG-TRACE] Metadata prepared: packetPathPresent=" + (preRegistrationDTO.getPacketPath() != null) + ", AESKeyPresent=" + (preRegistrationDTO.getSymmetricKey() != null));
 
 			if(mainResponseDTO.getResponse().getAppointmentDate() != null)
 				preRegistrationList.setAppointmentDate(DateUtils.parseUTCToDate(mainResponseDTO.getResponse().getAppointmentDate(),
@@ -264,12 +274,14 @@ public class PreRegistrationDataSyncServiceImpl extends BaseService implements P
 					Timestamp.valueOf(DateUtils.getUTCCurrentDateTime()) : lastUpdatedTimeStamp);
 
 			if (preRegistration == null) {
-				preRegistration = preRegistrationDAO.save(preRegistrationList);
+				System.out.println("[PREREG-TRACE] Derby metadata INSERT requested");
+                preRegistration = preRegistrationDAO.save(preRegistrationList);
 			} else {
 				preRegistrationList.setId(preRegistration.getId());
 				preRegistrationList.setUpdBy(getUserIdFromSession());
 				preRegistrationList.setUpdDtimes(new Timestamp(System.currentTimeMillis()));
-				preRegistration = preRegistrationDAO.update(preRegistrationList);
+				System.out.println("[PREREG-TRACE] Derby metadata UPDATE requested");
+                preRegistration = preRegistrationDAO.update(preRegistrationList);
 			}
 		} else if (mainResponseDTO.getErrors() != null && !mainResponseDTO.getErrors().isEmpty()) {
 			PreRegistrationExceptionJSONInfoDTO errorResponse = mainResponseDTO.getErrors().get(0);
@@ -475,8 +487,10 @@ public class PreRegistrationDataSyncServiceImpl extends BaseService implements P
 				if (null != preRegRecord) {
 					/* Get File to be deleted from pre registartion */
 					File preRegPacket = FileUtils.getFile(preRegRecord.getPacketPath());
+                    System.out.println("[PREREG-TRACE] Local ZIP deletion attempted; exists=" + preRegPacket.exists());
 					if (preRegPacket.exists() && preRegPacket.delete()) {
-						preRegistartionsToBeDeletedList.add(preRegRecord);
+						System.out.println("[PREREG-TRACE] Local ZIP deleted successfully");
+                        preRegistartionsToBeDeletedList.add(preRegRecord);
 					}}
 
 			}
@@ -515,7 +529,9 @@ public class PreRegistrationDataSyncServiceImpl extends BaseService implements P
 		try {
 
 			/* Delete All Pre Registartions which were under to be deleted state */
-			preRegistrationDAO.deleteAll(preRegList);
+			System.out.println("[PREREG-TRACE] Derby metadata DELETE count=" + preRegList.size());
+            preRegistrationDAO.deleteAll(preRegList);
+            System.out.println("[PREREG-TRACE] Derby metadata deletion finished");
 
 			/* Set Success Response */
 			setSuccessResponse(responseDTO, RegistrationConstants.PRE_REG_DELETE_SUCCESS, null);
