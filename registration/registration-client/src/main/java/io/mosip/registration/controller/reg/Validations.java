@@ -116,12 +116,14 @@ public class Validations extends BaseController {
 	 * @return true, if successful
 	 */
 	public boolean validateTheFields(Pane pane, List<String> notTovalidate, boolean isValid) {
+		System.out.println("[REG-VALIDATION] Checking pane=" + pane.getId() + ", childCount=" + pane.getChildren().size());
 		for (Node node : pane.getChildren()) {
 			if (node instanceof Pane) {
 				if (!validateTheFields((Pane) node, notTovalidate, isValid)) {
 					isValid = false;
 				}
 			} else if (nodeToValidate(notTovalidate, node) && !validateTheNode(pane, node, node.getId(), isValid)) {
+				System.out.println("[REG-VALIDATION] Failed node=" + node.getId() + ", type=" + node.getClass().getSimpleName());
 				isValid = false;
 			}
 		}
@@ -149,6 +151,9 @@ public class Validations extends BaseController {
 	 * @return true, if successful
 	 */
 	private boolean nodeToValidate(List<String> notTovalidate, Node node) {
+		if (node instanceof Button) {
+			System.out.println("[REG-VALIDATION] Button node candidate: id=" + node.getId() + ", excluded=" + notTovalidate.contains(node.getId()));
+		}
 		if (node.getId() != null && (node.getId().contains("gender") || node.getId().contains("residence"))) {
 			return !(node.getId() == null || notTovalidate.contains(node.getId()) || node instanceof ImageView
 					|| node instanceof Label || node instanceof Hyperlink || node instanceof Group || node instanceof ScrollPane);
@@ -207,6 +212,7 @@ public class Validations extends BaseController {
 	}
 
 	private boolean validateButtons(Pane parentPane, Button node, String id) {
+		System.out.println("[REG-VALIDATION] validateButtons entered: id=" + id + ", selectedStyle=" + node.getStyleClass().contains("selectedResidence") + ", disabled=" + node.isDisabled() + ", lostUIN=" + isLostUIN);
 		AtomicReference<Boolean> buttonSelected = new AtomicReference<>(false);
 		try {
 			VBox parent = (VBox) parentPane.getParent();
@@ -220,16 +226,22 @@ public class Validations extends BaseController {
 
 			boolean isMandatory = requiredFieldValidator.isRequiredField(getValidationMap().get(label),
 					getRegistrationDTOFromSession());
+			System.out.println("[REG-VALIDATION] Button mandatory: id=" + id + ", field=" + label + ", schemaFound=" + (getValidationMap().get(label) != null) + ", mandatory=" + isMandatory + ", recognized=" + (node.getId().contains("gender") || node.getId().contains("residence")));
 
 			if (isMandatory && (node.getId().contains("gender") || node.getId().contains("residence"))) {
 				node.getParent().getChildrenUnmodifiable().forEach(child -> {
+					if (child instanceof Button) {
+						System.out.println("[REG-VALIDATION] Candidate button=" + child.getId() + ", selected=" + child.getStyleClass().contains("selectedResidence"));
+					}
 					if (child instanceof Button && child.getStyleClass().contains("selectedResidence")) {
 						buttonSelected.set(true);
 					}
 				});
 			} else {
+				System.out.println("[REG-VALIDATION] Button selection requirement skipped: id=" + id + ", mandatory=" + isMandatory);
 				buttonSelected.set(true);
 			}
+			System.out.println("[REG-VALIDATION] Button validation result: id=" + id + ", valid=" + buttonSelected.get());
 			if (!buttonSelected.get()) {
 				generateAlert(parent, label, getFromLabelMap(label).concat(RegistrationConstants.SPACE)
 						.concat(applicationMessageBundle.getString(RegistrationConstants.REG_LGN_001)));
@@ -510,6 +522,7 @@ public class Validations extends BaseController {
 						.replaceAll(RegistrationConstants.LOCAL_LANGUAGE, RegistrationConstants.EMPTY);
 
 				if (node.isDisabled() || isLostUIN) {
+					System.out.println("[REG-VALIDATION] ComboBox validation bypass: id=" + id + ", disabled=" + node.isDisabled() + ", lostUIN=" + isLostUIN);
 					LOGGER.debug(RegistrationConstants.VALIDATION_LOGGER, APPLICATION_NAME, APPLICATION_ID,
 							"Ignoring validations as its lostUIN or disabled for field >> " + label);
 					return true;
@@ -518,6 +531,7 @@ public class Validations extends BaseController {
 				boolean isMandatory = requiredFieldValidator.isRequiredField(getValidationMap().get(label),
 						getRegistrationDTOFromSession());
 
+				System.out.println("[REG-VALIDATION] ComboBox check: id=" + id + ", mandatory=" + isMandatory + ", hasValue=" + (node.getValue() != null));
 				if (isMandatory) {
 					if (node.getValue() == null) {
 						generateAlert(parentPane, id, getFromLabelMap(label).concat(RegistrationConstants.SPACE)
@@ -614,7 +628,7 @@ public class Validations extends BaseController {
 	 * @return <code>true</code>, if successful, else <code>false</code>
 	 * @throws ParseException 
 	 */
-	public boolean validateDateWithMaxAndMinDays(String value, String id, int minDays, int maxDays) throws ParseException {
+	public boolean validateExpiryDate(String value, String id, int minDays, int maxDays) throws ParseException {
 		
 		SimpleDateFormat dateFormat = new SimpleDateFormat(ApplicationContext.getDateFormat());
 		dateFormat.setLenient(false);
