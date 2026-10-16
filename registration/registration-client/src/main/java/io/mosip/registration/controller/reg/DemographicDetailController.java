@@ -428,9 +428,6 @@ public class DemographicDetailController extends BaseController {
 			case RegistrationConstants.BUTTON:
 				content = addContentWithButtons(schemaDTO.getId(), schemaDTO, languageType);
 				break;
-			default:
-				LOGGER.error("Unknown control type found !" + schemaDTO.getId() + " >>> " + schemaDTO.getControlType());
-				break;
 		}
 
 		gridPane.add(content, 1, 2);
@@ -460,12 +457,9 @@ public class DemographicDetailController extends BaseController {
 			if(!dateValidation.isNewValueValid(nv, type)) {
 				textField.setText(ov);
 			}
-			boolean isValid = RegistrationConstants.AGE_FIELD.equalsIgnoreCase(type)
-					? dateValidation.validateAge(parentFlowPane, textField)
-					: schema.getMinimum() == schema.getMaximum()
-							? dateValidation.validateDate(parentFlowPane, schema.getId())
-							: dateValidation.validateDateWithMaxAndMinDays(parentFlowPane, schema.getId(),
-									schema.getMinimum(), schema.getMaximum());
+			boolean isValid = RegistrationConstants.AGE_FIELD.equalsIgnoreCase(type) ?
+					dateValidation.validateAge(parentFlowPane, textField) :
+					dateValidation.validateDate(parentFlowPane, schema.getId());
 			if(isValid) {
 				refreshDemographicGroups();
 			}
@@ -499,7 +493,7 @@ public class DemographicDetailController extends BaseController {
 			if(!dateValidation.isNewValueValid(nv, type)) {
 				textField.setText(ov);
 			}
-			boolean isValid = dateValidation.validateDateWithMaxAndMinDays(parentFlowPane, schema.getId(), schema.getMinimum(), schema.getMaximum());
+			boolean isValid = dateValidation.validateExpiryOfDate(parentFlowPane, schema.getId(), schema.getMinimum(), schema.getMaximum());
 			if(isValid) {
 				refreshDemographicGroups();
 			}
@@ -872,14 +866,17 @@ public class DemographicDetailController extends BaseController {
 	}
 
 	private void populateButtons(String key, String languageType) {
+		System.out.println("[REG-VALIDATION] Loading buttons: field=" + key + ", language=" + languageType);
 		try {
 			List<GenericDto> values = masterSyncService.getFieldValues(key, languageType.equals(RegistrationConstants.LOCAL_LANGUAGE) ?
 					ApplicationContext.localLanguage() : ApplicationContext.applicationLanguage());
 
+			System.out.println("[REG-VALIDATION] Field=" + key + ", options=" + (values == null ? "null" : values.size()));
 			if(values != null) {
 				values.forEach( genericDto -> {
 					Button button = new Button(genericDto.getName());
 					button.setId(key + genericDto.getCode() + languageType);
+					System.out.println("[REG-VALIDATION] Created button: field=" + key + ", id=" + button.getId() + ", label=" + genericDto.getName());
 					if(listOfButtons.get(key + languageType) == null) {
 						listOfButtons.put(key + languageType, new ArrayList<>());
 					}
@@ -887,6 +884,7 @@ public class DemographicDetailController extends BaseController {
 
 					if(!languageType.equals(RegistrationConstants.LOCAL_LANGUAGE)) {
 						button.addEventHandler(ActionEvent.ACTION, event -> {
+							System.out.println("[REG-VALIDATION] Clicked button=" + button.getId() + ", styleBefore=" + button.getStyleClass());
 							if (button.getStyleClass().contains("residence")) {
 								resetButtons(button);
 								if (!isAppLangAndLocalLangSame()) {
@@ -914,6 +912,7 @@ public class DemographicDetailController extends BaseController {
 	}
 
 	private void resetButtons(Button button) {
+		System.out.println("[REG-VALIDATION] Marking selected=" + button.getId());
 		button.getStyleClass().clear();
 		button.getStyleClass().addAll("selectedResidence", "button");
 		button.getParent().getChildrenUnmodifiable().forEach(node -> {
@@ -1006,7 +1005,9 @@ public class DemographicDetailController extends BaseController {
 					case RegistrationConstants.BUTTON:
 						List<Button> platformFieldButtons = listOfButtons.get(schemaField.getId());
 						List<Button> localFieldButtons = listOfButtons.get(schemaField.getId() + RegistrationConstants.LOCAL_LANGUAGE);
+						System.out.println("[REG-VALIDATION] Saving button field=" + schemaField.getId() + ", schemaRequired=" + schemaField.isRequired() + ", count=" + (platformFieldButtons == null ? "null" : platformFieldButtons.size()));
 						platformFieldButtons.forEach(button -> {
+							System.out.println("[REG-VALIDATION] Save selection: id=" + button.getId() + ", selected=" + button.getStyleClass().contains("selectedResidence"));
 							if (button.getStyleClass().contains("selectedResidence")) {
 								registrationDTO.addDemographicField(schemaField.getId(),
 										applicationContext.getApplicationLanguage(), button.getText(),
@@ -1395,9 +1396,11 @@ public class DemographicDetailController extends BaseController {
 		}
 		// Its required to save before validation as, on spot check for values during
 		// MVEL validation
+		System.out.println("[REG-VALIDATION] NEXT clicked - saving details");
 		saveDetail();
-
-		if (registrationController.validateDemographicPane(parentFlowPane)) {
+		boolean demographicValid = registrationController.validateDemographicPane(parentFlowPane);
+		System.out.println("[REG-VALIDATION] NEXT result=" + demographicValid + ", navigation=" + (demographicValid ? "ALLOWED" : "BLOCKED"));
+		if (demographicValid) {
 			guardianBiometricsController.populateBiometricPage(false, false);
 			documentScanController.populateDocumentCategories();
 			auditFactory.audit(AuditEvent.REG_DEMO_NEXT, Components.REG_DEMO_DETAILS, SessionContext.userId(),
@@ -1438,8 +1441,8 @@ public class DemographicDetailController extends BaseController {
 
 					if (locations.isEmpty()) {
 						GenericDto lC = new GenericDto();
-						lC.setCode(RegistrationConstants.AUDIT_DEFAULT_USER);
-						lC.setName(RegistrationConstants.AUDIT_DEFAULT_USER);
+						lC.setCode(RegistrationConstants.SPACE);
+						lC.setName(RegistrationConstants.SPACE);
 						lC.setLangCode(ApplicationContext.applicationLanguage());
 						destLocationHierarchy.getItems().add(lC);
 
