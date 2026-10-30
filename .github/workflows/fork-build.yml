@@ -1,0 +1,30 @@
+name: Fork build verification
+
+on:
+  push:
+    branches: [test/demographic-typing-fix-build]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21.0.3'
+      - name: Build and test
+        working-directory: registration
+        run: mvn -U -B clean install -Dgpg.skip -Dmaven.wagon.http.retryHandler.count=2
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: registration/**/target/surefire-reports/
+          if-no-files-found: ignore
