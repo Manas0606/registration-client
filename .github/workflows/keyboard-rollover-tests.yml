@@ -23,6 +23,22 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y xvfb libgtk-3-0 libxtst6 libxrender1 libxi6 libgl1 libasound2t64
       - name: Run keyboard rollover regression tests
+        shell: bash
         run: |
-          xvfb-run -a mvn -B -f registration/pom.xml -pl registration-client -am \
-            -Dtest=VirtualKeyboardTest -Dsurefire.failIfNoSpecifiedTests=false test
+          set -o pipefail
+          for attempt in 1 2 3; do
+            if xvfb-run -a mvn -B -f registration/pom.xml -pl registration-client -am \
+                -Dtest=VirtualKeyboardTest -Dsurefire.failIfNoSpecifiedTests=false test; then
+              exit 0
+            fi
+            # Only retry when Maven did not produce any test-result XML,
+            # e.g. a transient MOSIP snapshot repository 403; never mask test failures.
+            if find registration/registration-client/target/surefire-reports \
+                -name 'TEST-*VirtualKeyboardTest.xml' -print -quit 2>/dev/null | grep -q .; then
+              echo "Tests were executed and failed; not retrying."
+              exit 1
+            fi
+            if [ "$attempt" -eq 3 ]; then exit 1; fi
+            echo "Dependencies/build failed before tests; retrying attempt $((attempt+1))/3."
+            sleep 10
+          done
