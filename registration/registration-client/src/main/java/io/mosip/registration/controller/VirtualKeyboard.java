@@ -434,7 +434,9 @@ public class VirtualKeyboard {
 					|| event.getCode() == KeyCode.CONTROL
 					|| event.getCode() == KeyCode.ALT
 					|| event.getCode() == KeyCode.META
-					|| event.isControlDown()) {
+					|| event.isControlDown()
+					|| event.isAltDown()
+					|| event.isMetaDown()) {
 				return;
 			}
 
@@ -444,7 +446,8 @@ public class VirtualKeyboard {
 		});
 
 		textField.addEventFilter(KeyEvent.KEY_TYPED, event -> {
-			if (vkType.toString().contains("vk") || event.isControlDown()) {
+			if (vkType.toString().contains("vk") || event.isControlDown()
+					|| event.isAltDown() || event.isMetaDown()) {
 				return;
 			}
 
