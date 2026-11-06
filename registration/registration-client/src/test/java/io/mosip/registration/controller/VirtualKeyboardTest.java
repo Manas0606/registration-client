@@ -254,6 +254,21 @@ public class VirtualKeyboardTest {
     }
 
     @Test
+    public void altAndMetaModifiedKeysDoNotLeaveStaleMappings() throws Exception {
+        onFxThread(() -> {
+            Fixture f = new Fixture();
+            f.press(KeyCode.A, false, false, true, false);
+            f.release(KeyCode.A);
+            f.press(KeyCode.B, false, false, false, true);
+            f.release(KeyCode.B);
+            f.press(KeyCode.A);
+            f.typed("a");
+            f.release(KeyCode.A);
+            assertEquals("α", f.field.getText());
+        });
+    }
+
+    @Test
     public void virtualKeyboardEventsBypassPhysicalMappings() throws Exception {
         onFxThread(() -> {
             Fixture f = new Fixture();
