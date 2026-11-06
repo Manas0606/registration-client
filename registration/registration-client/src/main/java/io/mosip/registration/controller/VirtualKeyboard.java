@@ -438,10 +438,9 @@ public class VirtualKeyboard {
 				return;
 			}
 
-			String mappedText = lookupMappedKey(event);
-			if (mappedText != null) {
-				pendingKeys.addLast(new PendingKey(event.getCode(), mappedText));
-			}
+			// Keep unmapped keys (for example Space) in the same order as mapped keys.
+			// Otherwise their KEY_TYPED events can consume a later key's mapping.
+			pendingKeys.addLast(new PendingKey(event.getCode(), lookupMappedKey(event)));
 		});
 
 		textField.addEventFilter(KeyEvent.KEY_TYPED, event -> {
@@ -450,7 +449,8 @@ public class VirtualKeyboard {
 			}
 
 			PendingKey pendingKey = pendingKeys.pollFirst();
-			if (pendingKey == null || pendingKey.mappedText.equals(event.getCharacter())) {
+			if (pendingKey == null || pendingKey.mappedText == null
+					|| pendingKey.mappedText.equals(event.getCharacter())) {
 				return;
 			}
 
@@ -459,10 +459,9 @@ public class VirtualKeyboard {
 		});
 
 		textField.addEventFilter(KeyEvent.KEY_RELEASED, event -> {
-			PendingKey pendingKey = pendingKeys.peekFirst();
-			if (pendingKey != null && pendingKey.code == event.getCode()) {
-				pendingKeys.removeFirst();
-			}
+			// A release can arrive out of order during key rollover; remove that key
+			// wherever it appears, so stale mappings cannot corrupt the next typed event.
+			pendingKeys.removeIf(pendingKey -> pendingKey.code == event.getCode());
 		});
 
 		textField.focusedProperty().addListener((observable, oldValue, newValue) -> {
