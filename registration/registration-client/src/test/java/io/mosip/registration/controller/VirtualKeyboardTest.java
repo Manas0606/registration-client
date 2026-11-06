@@ -243,6 +243,7 @@ public class VirtualKeyboardTest {
         onFxThread(() -> {
             Fixture f = new Fixture();
             f.field.setText("old");
+            f.field.positionCaret(f.field.getLength());
             f.press(KeyCode.A, false, true, false, false);
             f.release(KeyCode.A);
             // A normal subsequent key must not pick up a stale Ctrl+A mapping.
