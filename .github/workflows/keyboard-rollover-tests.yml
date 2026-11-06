@@ -1,0 +1,28 @@
+name: Keyboard rollover JavaFX regression tests
+
+on:
+  push:
+    branches:
+      - test/keyboard-rollover-regression
+  workflow_dispatch:
+
+jobs:
+  javaFxKeyboardTests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+          cache-dependency-path: registration/pom.xml
+      - name: Install virtual display for JavaFX
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb libgtk-3-0 libxtst6 libxrender1 libxi6 libgl1 libasound2t64
+      - name: Run keyboard rollover regression tests
+        run: |
+          xvfb-run -a mvn -B -f registration/pom.xml -pl registration-client -am \
+            -Dtest=VirtualKeyboardTest -Dsurefire.failIfNoSpecifiedTests=false test
