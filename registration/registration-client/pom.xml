@@ -17,6 +17,12 @@
 	<description>Maven project of MOSIP Registration UI</description>
 
 	<dependencies>
+		<!-- Regression tests for physical and virtual JavaFX keyboard input. -->
+		<dependency>
+			<groupId>junit</groupId>
+			<artifactId>junit</artifactId>
+			<scope>test</scope>
+		</dependency>
 		<dependency>
 			<groupId>io.mosip.registration</groupId>
 			<artifactId>registration-services</artifactId>
