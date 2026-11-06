@@ -71,7 +71,21 @@ public class VirtualKeyboardTest {
 
         void key(javafx.event.EventType<KeyEvent> type, KeyCode code, String character,
                  boolean shift, boolean ctrl, boolean alt, boolean meta) {
-            field.fireEvent(new KeyEvent(type, character, "", code, shift, ctrl, alt, meta));
+            KeyEvent event = new KeyEvent(type, character, "", code, shift, ctrl, alt, meta);
+            field.fireEvent(event);
+
+            // fireEvent dispatches JavaFX event filters/handlers, but a detached
+            // TextField in a test scene does not perform the native keyboard's
+            // default text insertion for an unconsumed synthetic KEY_TYPED.
+            // Model that default action explicitly so these tests check both:
+            // mapped KEY_TYPED events consumed by VirtualKeyboard, and unmapped
+            // KEY_TYPED events left for JavaFX's normal insertion path.
+            if (type == KeyEvent.KEY_TYPED && !event.isConsumed()
+                    && character != null && !character.isEmpty()
+                    && !ctrl && !alt && !meta
+                    && field.isEditable()) {
+                field.replaceSelection(character);
+            }
         }
 
         void spaceALetterRollover(boolean releaseSpaceFirst) {
