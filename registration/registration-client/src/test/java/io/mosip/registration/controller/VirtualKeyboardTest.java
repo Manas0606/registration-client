@@ -47,6 +47,21 @@ public class VirtualKeyboardTest {
             });
             new Scene(new VBox(field));
             keyboard.changeControlOfKeyboard(field);
+
+            // After the production KEY_TYPED filter, reproduce the default text
+            // insertion that the native JavaFX input pipeline supplies for an
+            // unconsumed event. A bare synthetic fireEvent does not do this.
+            // Using a handler ensures we observe the *dispatched* event's
+            // consumed state, rather than checking a potentially copied event.
+            field.addEventHandler(KeyEvent.KEY_TYPED, event -> {
+                String character = event.getCharacter();
+                if (!event.isConsumed() && character != null
+                        && !character.isEmpty() && field.isEditable()
+                        && !event.isControlDown() && !event.isAltDown()
+                        && !event.isMetaDown()) {
+                    field.replaceSelection(character);
+                }
+            });
         }
 
         void press(KeyCode code) {
@@ -71,21 +86,7 @@ public class VirtualKeyboardTest {
 
         void key(javafx.event.EventType<KeyEvent> type, KeyCode code, String character,
                  boolean shift, boolean ctrl, boolean alt, boolean meta) {
-            KeyEvent event = new KeyEvent(type, character, "", code, shift, ctrl, alt, meta);
-            field.fireEvent(event);
-
-            // fireEvent dispatches JavaFX event filters/handlers, but a detached
-            // TextField in a test scene does not perform the native keyboard's
-            // default text insertion for an unconsumed synthetic KEY_TYPED.
-            // Model that default action explicitly so these tests check both:
-            // mapped KEY_TYPED events consumed by VirtualKeyboard, and unmapped
-            // KEY_TYPED events left for JavaFX's normal insertion path.
-            if (type == KeyEvent.KEY_TYPED && !event.isConsumed()
-                    && character != null && !character.isEmpty()
-                    && !ctrl && !alt && !meta
-                    && field.isEditable()) {
-                field.replaceSelection(character);
-            }
+            field.fireEvent(new KeyEvent(type, character, "", code, shift, ctrl, alt, meta));
         }
 
         void spaceALetterRollover(boolean releaseSpaceFirst) {
