@@ -19,6 +19,13 @@
 
 
 	<dependencies>
+		<!-- Real MOSIP transliteration implementation for regression tests -->
+		<dependency>
+			<groupId>io.mosip.kernel</groupId>
+			<artifactId>kernel-transliteration-icu4j</artifactId>
+			<version>1.2.0.2</version>
+			<scope>test</scope>
+		</dependency>
 		<dependency>
 			<groupId>junit</groupId>
 			<artifactId>junit</artifactId>
